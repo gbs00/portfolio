@@ -16,10 +16,16 @@ class Page(HTMLParser):
         self.h1s = 0
         self.cards = 0
         self.lang = None
+        self.body = {}
+        self.analytics = []
+        self.events = []
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if 'id' in a: self.ids.add(a['id'])
         if tag == 'html': self.lang = a.get('lang')
+        if tag == 'body': self.body = a
+        if tag == 'script' and a.get('src', '').endswith('analytics.js'): self.analytics.append(a)
+        if 'data-analytics-event' in a: self.events.append(a)
         if tag == 'h1': self.h1s += 1
         if 'project-card' in a.get('class', '').split(): self.cards += 1
         for key in ['href', 'src', 'poster']:
@@ -46,10 +52,27 @@ for f, p in pages.items():
             errors.append(f'{f}: missing anchor: {link}')
 assert pages[(dist/'portfolio.html').resolve()].cards == len(projects), 'Portfolio count does not match visible records'
 assert len(list((dist/'projects').glob('*/index.html'))) == len(projects), 'Detail pages do not match visible records'
+analytics_ids = set()
+for f, page in pages.items():
+    assert len(page.analytics) <= 1, f'{f}: duplicate analytics script'
+    for script in page.analytics:
+        analytics_ids.add(script['data-measurement-id'])
+        assert 'defer' in script, f'{f}: analytics should not block rendering'
+    profiles = [e for e in page.events if e['data-analytics-event'] == 'profile_click']
+    assert len(profiles) == 4, f'{f}: missing personal-link tracking'
+assert len(analytics_ids) <= 1, 'Pages use inconsistent GA4 streams'
+assert not analytics_ids or all(len(p.analytics) == 1 for p in pages.values()), 'GA4 is missing from some pages'
+for entry in ['index.html', 'portfolio.html']:
+    cards = [e for e in pages[(dist/entry).resolve()].events if e['data-analytics-event'] == 'project_open']
+    assert [e['data-project-id'] for e in cards] == [p['slug'] for p in projects], 'Tracking changed the Feishu display order'
 for p in projects:
     f = dist/'projects'/p['slug']/'index.html'
     assert f.exists(), f'Missing detail page for {p["title"]}'
     assert p['title'] in f.read_text(), f'Wrong detail page for {p["title"]}'
+    page = pages[f.resolve()]
+    assert page.body.get('data-project-id') == p['slug'], f'{f}: wrong analytics project'
+    visits = [e for e in page.events if e['data-analytics-event'] == 'project_outbound']
+    assert {e['data-placement'] for e in visits} == {'hero', 'bottom'}, f'{f}: missing outbound tracking'
 for f in dist.rglob('*'):
     if f.is_file() and f.suffix in ['.html','.css','.js','.json']:
         text=f.read_text()

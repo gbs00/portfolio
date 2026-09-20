@@ -57,6 +57,30 @@ git push
 
 工作流配置依据 [GitHub Pages 官方文档](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。未设置自定义域名。
 
+## GA4 访问统计
+
+`data/analytics.json` 保存公开的 GA4 衡量 ID 和正式网站地址。修改配置后重新构建、推送即可更新所有页面；也可以在构建时用 `GA4_MEASUREMENT_ID` 覆盖。ID 留空时不会加载 Google 跟踪代码。不要在仓库中保存 Google 账号凭据或 API 密钥。
+
+`src/analytics.js` 在构建时复制到 `dist/analytics.js`。只有正式网站的 origin 和 `/portfolio/` 路径下启用统计，本地预览自动排除。异步加载 Google tag，并使用默认 `page_view`，避免重复发送。主页的 `/portfolio/`、`index.html`、`portfolio.html` 合并为同一统计地址；详情页的 `index.html` 也归一为目录地址。保留 UTM 渠道参数，剔除其他查询参数和锚点。广告个性化与 Google signals 在代码中关闭。
+
+| 事件 | 触发时机 | 主要参数 |
+| --- | --- | --- |
+| `page_view` | 主页或作品详情页打开 | `page_type`、详情页的 `project_id` / `project_name` |
+| `project_open` | 点击作品卡片或下一个作品 | `project_id`、`project_name`、`position`、`placement` |
+| `project_outbound` | 点击详情页访问作品按钮 | `project_id`、`project_name`、`placement`、`link_url` |
+| `profile_click` | 点击顶部或底部个人入口 | `profile`（blog / github）、`placement` |
+| `video_start` / `video_progress` / `video_complete` | 原生 MP4 首次播放、进度到达 25% / 50% / 75%、播放结束 | `project_id`、`video_title`、`video_percent` |
+
+一次页面访问内，视频开始、各个进度和完成事件各发送一次。进度代表播放位置到达相应节点，不代表连续观看时长。外链保留原有新标签打开方式；站内点击最多等待 200 毫秒用于发送事件，Google tag 被拦截时仍能正常跳转。增强型衡量的 `click` 是通用外链事件；分析作品转化时只使用 `project_outbound`，不要把两个事件相加。
+
+GA4 后台可将 `project_id`、`project_name`、`placement`、`profile`、`page_type` 注册为事件级自定义维度，并将 `project_outbound` 设为关键事件。使用“网页和屏幕”比较作品访问量，使用探索报告结合项目维度查看访问与点击。
+
+- 调试：在正式网站 URL 后加 `?ga_debug=1`。同一标签页后续页面启用 DebugView，并在浏览器控制台输出事件；加 `?ga_debug=0` 关闭。
+- 排除自己的访问：在正式网站 URL 后加 `?analytics=off`。此浏览器会记住关闭状态；加 `?analytics=on` 恢复。浏览器禁止本地存储时，开关仅对当前带参数页面生效。
+- 渠道示例：`https://gbs00.github.io/portfolio/?utm_source=blog&utm_medium=referral&utm_campaign=portfolio`。渠道参数使用分类名称，不放个人信息。
+
+配置依据：[Google tag 事件](https://developers.google.com/analytics/devguides/collection/ga4/events)、[网页浏览量](https://developers.google.com/analytics/devguides/collection/ga4/views)、[GA4 配置字段](https://developers.google.com/analytics/devguides/collection/ga4/reference/config)。
+
 ## 验收清单
 
 - 首页直接展示作品；旧作品集地址仍可访问。
@@ -67,4 +91,3 @@ git push
 - 详情页包含真实预览图、原始介绍与外部访问链接。
 - 吃点啥详情页可播放飞书附件中的演示视频。
 - 桌面、手机宽度下内容可读，导航可用。
-
