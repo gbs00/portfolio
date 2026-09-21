@@ -4,6 +4,7 @@
     "slug": "skills-manager",
     "title": "Skills Manager",
     "visible": true,
+    "displayOrder": 1,
     "summary": "轻松管理多台设备间的Skills，妈妈再也不用担心我的Skills找不到啦！",
     "sourceSummary": "轻松管理多台设备间的Skills，妈妈再也不用担心我的Skills找不到啦！",
     "url": "https://github.com/gbs00/skills-manager",
@@ -22,6 +23,7 @@
     "slug": "what-to-eat",
     "title": "吃点啥",
     "visible": true,
+    "displayOrder": 2,
     "summary": "中午不知道该吃什么？快来看看吃点啥。",
     "sourceSummary": "中午不知道该吃什么？快来看看吃点啥。",
     "url": "https://what-to-eat-alpha-two.vercel.app/",
@@ -40,6 +42,7 @@
     "slug": "token-bi",
     "title": "Token BI",
     "visible": true,
+    "displayOrder": 3,
     "summary": "让你的额度使用情况显而易见，任何闲置设备连上WIFI，即可展示Token用量仪表盘。",
     "sourceSummary": "让你的额度使用情况显而易见，任何闲置设备连上WIFI，即可展示Token用量仪表盘。",
     "url": "https://github.com/gbs00/Token_BI/releases",
@@ -55,10 +58,30 @@
     "video": null
   },
   {
+    "id": "recv9oRAM7fQ7B",
+    "slug": "sidenote",
+    "title": "SideNote 边角记",
+    "visible": true,
+    "displayOrder": 4,
+    "summary": "轻量级网页笔记工具，侧边栏上的笔记伙伴，支持 Markdown 实时渲染，保存网页URL和标题。",
+    "sourceSummary": "轻量级网页笔记工具\n侧边栏上的笔记伙伴，支持 Markdown 实时渲染，保存网页URL和标题。",
+    "url": "https://chromewebstore.google.com/detail/chilonpfaigbakofbbphjmaldgdiopgo?utm_source=item-share-cb",
+    "tags": [
+      "AI",
+      "工具"
+    ],
+    "image": "sidenote.png",
+    "imageAlt": "SideNote边角记预览",
+    "width": 1280,
+    "height": 800,
+    "video": null
+  },
+  {
     "id": "recvrdORhLEy35",
     "slug": "blog",
     "title": "个人博客",
     "visible": true,
+    "displayOrder": 5,
     "summary": "我与世界的交互艺术",
     "sourceSummary": "我与世界的交互艺术",
     "url": "https://www.gbs00.cc/?theme=next",
@@ -76,6 +99,7 @@
     "slug": "weekly",
     "title": "有限周刊",
     "visible": true,
+    "displayOrder": 6,
     "summary": "以周记方式来咀嚼优质的内容，我们不能只任由信息流经而不留下痕迹。",
     "sourceSummary": "以周记方式来咀嚼优质的内容，我们不能只任由信息流经而不留下痕迹。",
     "url": "https://mp.weixin.qq.com/s/M39R3HkZdXTxfTvfBepEGA",
@@ -86,24 +110,6 @@
     "imageAlt": "有限周刊预览",
     "width": 2560,
     "height": 1440,
-    "video": null
-  },
-  {
-    "id": "recv9oRAM7fQ7B",
-    "slug": "sidenote",
-    "title": "SideNote 边角记",
-    "visible": true,
-    "summary": "轻量级网页笔记工具，侧边栏上的笔记伙伴，支持 Markdown 实时渲染，保存网页URL和标题。",
-    "sourceSummary": "轻量级网页笔记工具\n侧边栏上的笔记伙伴，支持 Markdown 实时渲染，保存网页URL和标题。",
-    "url": "https://chromewebstore.google.com/detail/chilonpfaigbakofbbphjmaldgdiopgo?utm_source=item-share-cb",
-    "tags": [
-      "AI",
-      "工具"
-    ],
-    "image": "sidenote.png",
-    "imageAlt": "SideNote边角记预览",
-    "width": 1280,
-    "height": 800,
     "video": null
   }
 ]

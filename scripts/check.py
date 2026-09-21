@@ -5,7 +5,7 @@ import json
 
 root = Path(__file__).resolve().parent.parent
 dist = root / 'dist'
-projects = [p for p in json.loads((root / 'data/projects.json').read_text()) if p.get('visible') is True]
+projects = sorted([p for p in json.loads((root / 'data/projects.json').read_text()) if p.get('visible') is True], key=lambda p: p['displayOrder'])
 errors = []
 
 class Page(HTMLParser):
@@ -64,13 +64,18 @@ assert len(analytics_ids) <= 1, 'Pages use inconsistent GA4 streams'
 assert not analytics_ids or all(len(p.analytics) == 1 for p in pages.values()), 'GA4 is missing from some pages'
 for entry in ['index.html', 'portfolio.html']:
     cards = [e for e in pages[(dist/entry).resolve()].events if e['data-analytics-event'] == 'project_open']
-    assert [e['data-project-id'] for e in cards] == [p['slug'] for p in projects], 'Tracking changed the Feishu display order'
-for p in projects:
+    assert [e['data-project-id'] for e in cards] == [p['slug'] for p in projects], 'Cards do not follow Feishu 显示排序'
+    assert [e['data-position'] for e in cards] == [str(i + 1) for i in range(len(projects))], 'Card tracking positions do not match display order'
+for i, p in enumerate(projects):
     f = dist/'projects'/p['slug']/'index.html'
     assert f.exists(), f'Missing detail page for {p["title"]}'
     assert p['title'] in f.read_text(), f'Wrong detail page for {p["title"]}'
     page = pages[f.resolve()]
     assert page.body.get('data-project-id') == p['slug'], f'{f}: wrong analytics project'
+    next_project = projects[(i + 1) % len(projects)]
+    next_links = [e for e in page.events if e.get('data-placement') == 'next_project']
+    assert len(next_links) == 1 and next_links[0]['href'] == f'../{next_project["slug"]}/index.html', f'{f}: wrong next project'
+    assert next_links[0]['data-project-id'] == next_project['slug'] and next_links[0]['data-position'] == str((i + 1) % len(projects) + 1), f'{f}: wrong next-project tracking position'
     visits = [e for e in page.events if e['data-analytics-event'] == 'project_outbound']
     assert {e['data-placement'] for e in visits} == {'hero', 'bottom'}, f'{f}: missing outbound tracking'
 for f in dist.rglob('*'):
