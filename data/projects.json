@@ -1,21 +1,22 @@
 [
   {
-    "id": "recvvM4XQfe4cm",
-    "slug": "skills-manager",
-    "title": "Skills Manager",
+    "id": "recvmwPyp2cCmP",
+    "slug": "token-bi",
+    "title": "Token BI",
     "visible": true,
     "displayOrder": 1,
-    "summary": "轻松管理多台设备间的Skills，妈妈再也不用担心我的Skills找不到啦！",
-    "sourceSummary": "轻松管理多台设备间的Skills，妈妈再也不用担心我的Skills找不到啦！",
-    "url": "https://github.com/gbs00/skills-manager",
+    "summary": "让你的额度使用情况显而易见，任何闲置设备连上WIFI，即可展示Token用量仪表盘。",
+    "sourceSummary": "让你的额度使用情况显而易见，任何闲置设备连上WIFI，即可展示Token用量仪表盘。",
+    "url": "https://github.com/gbs00/Token_BI/releases",
     "tags": [
       "AI",
+      "数据",
       "工具"
     ],
-    "image": "skills-manager.png",
-    "imageAlt": "Skills Manager预览",
-    "width": 1493,
-    "height": 1054,
+    "image": "token-bi.png",
+    "imageAlt": "Token BI预览",
+    "width": 918,
+    "height": 419,
     "video": null
   },
   {
@@ -38,23 +39,22 @@
     "video": "what-to-eat.mp4"
   },
   {
-    "id": "recvmwPyp2cCmP",
-    "slug": "token-bi",
-    "title": "Token BI",
+    "id": "recvvM4XQfe4cm",
+    "slug": "skills-manager",
+    "title": "Skills Manager",
     "visible": true,
     "displayOrder": 3,
-    "summary": "让你的额度使用情况显而易见，任何闲置设备连上WIFI，即可展示Token用量仪表盘。",
-    "sourceSummary": "让你的额度使用情况显而易见，任何闲置设备连上WIFI，即可展示Token用量仪表盘。",
-    "url": "https://github.com/gbs00/Token_BI/releases",
+    "summary": "轻松管理多台设备间的Skills，妈妈再也不用担心我的Skills找不到啦！",
+    "sourceSummary": "轻松管理多台设备间的Skills，妈妈再也不用担心我的Skills找不到啦！",
+    "url": "https://github.com/gbs00/skills-manager",
     "tags": [
       "AI",
-      "数据",
       "工具"
     ],
-    "image": "token-bi.png",
-    "imageAlt": "Token BI预览",
-    "width": 918,
-    "height": 419,
+    "image": "skills-manager.png",
+    "imageAlt": "Skills Manager预览",
+    "width": 1493,
+    "height": 1054,
     "video": null
   },
   {
