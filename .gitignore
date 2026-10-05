@@ -2,6 +2,9 @@
 .sites-runtime/
 .DS_Store
 node_modules/
+dist/
+__pycache__/
+.portfolio-backup-*/
 .env
 .env.*
 !.env.example

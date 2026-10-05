@@ -14,23 +14,27 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: read
     steps:
       - uses: actions/checkout@v6
-      - name: Build static pages
-        run: node scripts/build.mjs
-      - name: Check pages and visibility
-        run: python3 scripts/check.py
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Regression tests
+        run: npm test
+      - name: Build and validate static pages
+        run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write

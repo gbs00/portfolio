@@ -36,7 +36,10 @@
     "imageAlt": "吃点啥预览",
     "width": 1928,
     "height": 1534,
-    "video": "what-to-eat.mp4"
+    "video": "what-to-eat.mp4",
+    "thumbnail": "what-to-eat-preview.jpg",
+    "thumbnailWidth": 1280,
+    "thumbnailHeight": 1018
   },
   {
     "id": "recvvM4XQfe4cm",
@@ -55,7 +58,10 @@
     "imageAlt": "Skills Manager预览",
     "width": 1493,
     "height": 1054,
-    "video": null
+    "video": null,
+    "thumbnail": "skills-manager-preview.jpg",
+    "thumbnailWidth": 1280,
+    "thumbnailHeight": 903
   },
   {
     "id": "recv9oRAM7fQ7B",
@@ -110,6 +116,9 @@
     "imageAlt": "有限周刊预览",
     "width": 2560,
     "height": 1440,
-    "video": null
+    "video": null,
+    "thumbnail": "weekly-preview.jpg",
+    "thumbnailWidth": 1280,
+    "thumbnailHeight": 720
   }
 ]

@@ -1,48 +1,50 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const dist=path.join(root,'dist');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const projects=JSON.parse(fs.readFileSync(path.join(root,'data/projects.json'),'utf8')).filter(p=>p.visible===true);
-for(const p of projects)if(!Number.isFinite(p.displayOrder))throw new Error(`Missing or invalid displayOrder for ${p.title}. Sync the Feishu 显示排序 field first.`);
-if(new Set(projects.map(p=>p.displayOrder)).size!==projects.length)throw new Error('Visible projects must have unique 显示排序 values.');
-projects.sort((a,b)=>a.displayOrder-b.displayOrder);
-const editorial=JSON.parse(fs.readFileSync(path.join(root,'data/editorial.json'),'utf8'));
-const analytics=JSON.parse(fs.readFileSync(path.join(root,'data/analytics.json'),'utf8'));
-const measurementId=(process.env.GA4_MEASUREMENT_ID??analytics.measurementId).trim();
-if(measurementId&&!/^G-[A-Z0-9]+$/.test(measurementId))throw new Error('Invalid GA4 measurement ID');
-const siteUrl=new URL(analytics.siteUrl);
-if(siteUrl.protocol!=='https:'||!siteUrl.pathname.endsWith('/')||siteUrl.search||siteUrl.hash)throw new Error('Analytics siteUrl must be an HTTPS URL with a trailing slash');
-fs.mkdirSync(dist,{recursive:true});
-fs.copyFileSync(path.join(root,'src/analytics.js'),path.join(dist,'analytics.js'));
-function tracking(event,placement,p=null,position=null){return ` data-analytics-event="${event}" data-placement="${placement}"${p?` data-project-id="${esc(p.slug)}" data-project-name="${esc(p.title)}"`:''}${position!==null?` data-position="${position}"`:''}`}
-function analyticsTag(base){return measurementId?`<script defer src="${base}analytics.js" data-measurement-id="${esc(measurementId)}" data-site-url="${esc(siteUrl.href)}"></script>`:''}
-console.log(measurementId?`GA4 enabled: ${measurementId}`:'GA4 disabled: measurement ID not configured.');
-for(const p of projects){
-  if(!/^[a-z0-9-]+$/.test(p.slug))throw new Error('Invalid project slug');
-  if(!['https:','http:'].includes(new URL(p.url).protocol))throw new Error('Invalid external URL');
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import {normalizeProjects, normalizeAnalytics} from './lib/projects.mjs';
+import {renderSite} from './lib/render.mjs';
+import {readJson, writeJson, createStage, replacePaths} from './lib/files.mjs';
+
+export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+export function buildSite({root = projectRoot, outputDir = path.join(root, 'dist'), assetsDir = path.join(root, 'public/assets'), projects = readJson(path.join(root, 'data/projects.json'))} = {}) {
+  const visible = normalizeProjects(projects);
+  const analyticsFile = path.join(root, 'data/analytics.json');
+  const config = normalizeAnalytics(readJson(analyticsFile), process.env.GA4_MEASUREMENT_ID);
+  const date = process.env.SOURCE_DATE_EPOCH ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date();
+  if (!Number.isFinite(date.getTime())) throw new Error('Invalid SOURCE_DATE_EPOCH.');
+  const pages = renderSite(visible, readJson(path.join(root, 'data/editorial.json')), {...config, year: date.getUTCFullYear()});
+  const stage = createStage(root, 'build-');
+  const site = path.join(stage, 'site');
+  try {
+    fs.mkdirSync(path.join(site, 'assets'), {recursive: true});
+    for (const filename of ['styles.css', 'analytics.js']) {
+      fs.copyFileSync(path.join(root, 'src', filename), path.join(site, filename));
+    }
+    const assets = new Set(visible.flatMap(project => [project.image, project.video, project.thumbnail]).filter(Boolean));
+    for (const filename of assets) fs.copyFileSync(path.join(assetsDir, filename), path.join(site, 'assets', filename));
+    for (const [filename, html] of pages) {
+      fs.mkdirSync(path.dirname(path.join(site, filename)), {recursive: true});
+      fs.writeFileSync(path.join(site, filename), html);
+    }
+    fs.writeFileSync(path.join(site, '.nojekyll'), '');
+    const snapshot = path.join(stage, 'projects.json');
+    writeJson(snapshot, visible);
+    const checkedAnalytics = path.join(stage, 'analytics.json');
+    writeJson(checkedAnalytics, config);
+    const validation = execFileSync('python3', [
+      path.join(projectRoot, 'scripts/check.py'), '--site-dir', site,
+      '--projects-file', snapshot, '--analytics-file', checkedAnalytics,
+    ], {encoding: 'utf8'}).trim();
+    replacePaths([{source: site, target: outputDir}]);
+    return {pages: pages.size, projects: visible.length, validation};
+  } finally {
+    fs.rmSync(stage, {recursive: true, force: true});
+  }
 }
-const arrow='<span class="arrow" aria-hidden="true">↗</span>';
-const favicon='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#222522"/><text x="14" y="47" font-family="Arial,sans-serif" font-size="44" font-weight="bold" fill="#fbfcf9">t</text><circle cx="48" cy="46" r="6" fill="#d54822"/></svg>');
-function shell(title,description,body,{base='./',project=null}={}){return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${esc(description)}"><meta name="theme-color" content="#fbfcf9"><title>${esc(title)}</title><link rel="icon" type="image/svg+xml" href="${favicon}"><link rel="stylesheet" href="${base}styles.css">${analyticsTag(base)}</head><body data-page-type="${project?'project':'portfolio'}"${project?` data-project-id="${esc(project.slug)}" data-project-name="${esc(project.title)}"`:''}><a class="skip" href="#main">跳转到内容</a><div class="wrap"><header class="header"><a class="logo" href="${base}index.html" aria-label="Tim 的主页">tim<span class="logo-mark"></span></a><nav class="nav" aria-label="主导航"><a href="${base}index.html" aria-current="page">作品集</a><a class="personal-link"${tracking('profile_click','header')} data-profile="blog" href="https://www.gbs00.cc/" target="_blank" rel="noopener noreferrer">个人博客 ↗</a><a class="personal-link"${tracking('profile_click','header')} data-profile="github" href="https://github.com/gbs00?tab=repositories" target="_blank" rel="noopener noreferrer">GitHub 仓库 ↗</a></nav></header><main id="main">${body}</main><footer class="footer"><span>© ${new Date().getFullYear()} Tim</span><div class="footer-links"><a${tracking('profile_click','footer')} data-profile="blog" href="https://www.gbs00.cc/" target="_blank" rel="noopener noreferrer">个人博客 ↗</a><a${tracking('profile_click','footer')} data-profile="github" href="https://github.com/gbs00?tab=repositories" target="_blank" rel="noopener noreferrer">GitHub 仓库 ↗</a><a href="#main">回到顶部 ↑</a></div></footer></div></body></html>`}
-function tags(p){return `<div class="tags">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`}
-function visual(p,base='./'){if(!p.image)return `<div class="project-visual project-placeholder"><span>${esc(p.title)}</span><span class="card-arrow" aria-hidden="true">↗</span></div>`;return `<div class="project-visual visual-${p.slug}"><img src="${base}assets/${p.image}" alt="${esc(p.imageAlt)}" loading="lazy" width="${p.width}" height="${p.height}" ${p.slug==='blog'?'class="blog-avatar"':''}>${p.slug==='blog'?'<div class="blog-wordmark">gbs00.cc<small>我与世界的交互艺术</small></div>':''}<span class="card-arrow" aria-hidden="true">↗</span></div>`}
-function card(p,i){return `<a class="project-card"${tracking('project_open','grid',p,i+1)} href="./projects/${p.slug}/index.html" aria-label="查看${esc(p.title)}作品详情">${visual(p)}<div class="card-info"><div class="card-title-line"><h3>${esc(p.title)}</h3><span class="card-index">${String(i+1).padStart(2,'0')}</span></div><p class="card-description">${esc(p.summary)}</p>${tags(p)}</div></a>`}
-const portfolio=`<section class="work-hero"><div><div class="eyebrow">Selected projects</div><h1>一点想法，<br>一些<em class="accent" style="font-style:normal">作品。</em></h1><p>从一个日常问题出发，做出可以使用的答案。<br>这里收录我的工具、实验与持续写作。</p></div><div class="work-count">${String(projects.length).padStart(2,'0')}<small>PROJECTS & IDEAS</small></div></section><div class="work-toolbar"><strong>全部作品 / ${String(projects.length).padStart(2,'0')}</strong><span>工具 · 数据 · 文字</span></div><section class="all-projects" aria-label="全部作品"><div class="project-grid">${projects.map(card).join('')}</div></section>`;
-const portfolioPage=shell('Tim · 作品集',`浏览 Tim 的作品：${projects.map(p=>p.title).join('、')}。`,portfolio);
-for(const file of ['index.html','portfolio.html'])fs.writeFileSync(path.join(dist,file),portfolioPage);
-console.log(`Built portfolio entrypoints with ${projects.length} visible projects.`);
-const projectDir=path.join(dist,'projects');
-fs.rmSync(projectDir,{recursive:true,force:true});
-fs.mkdirSync(projectDir,{recursive:true});
-projects.forEach((p,i)=>{
-  const d=editorial[p.slug]??{kicker:'PROJECT NOTES',headline:p.title,format:'个人作品',destination:new URL(p.url).hostname,action:'访问作品',overview:p.summary,features:[]};
-  const next=projects[(i+1)%projects.length];
-  const image=p.image?`<a class="detail-image-link detail-image-${p.slug}" href="../../assets/${p.image}" target="_blank" rel="noopener noreferrer" aria-label="打开${esc(p.title)}预览原图"><img src="../../assets/${p.image}" alt="${esc(p.imageAlt)}" width="${p.width}" height="${p.height}"></a>`:'';
-  const body=`<nav class="breadcrumb" aria-label="面包屑"><a href="../../portfolio.html">← 全部作品</a><span>/</span><span>${esc(p.title)}</span></nav><section class="detail-hero"><div><div class="eyebrow">${esc(d.kicker)}</div><h1>${esc(p.title)}</h1><p class="detail-headline">${esc(d.headline)}</p>${tags(p)}</div><a class="button"${tracking('project_outbound','hero',p)} href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(d.action)} ${arrow}</a></section><div class="detail-meta"><div><span>作品形式</span><strong>${esc(d.format)}</strong></div><div><span>关注领域</span><strong>${esc(p.tags.join(' / '))}</strong></div><div><span>访问入口</span><strong>${esc(d.destination)}</strong></div></div>${image?`<figure class="detail-figure">${image}<figcaption>${esc(p.imageAlt)}<span>点击图片查看原图 ↗</span></figcaption></figure>`:''}<section class="detail-story"><div><div class="eyebrow">Overview</div><h2>关于这件作品</h2></div><div><p class="story-lead">${esc(d.overview)}</p><blockquote>${esc(p.sourceSummary).replace(/\n/g,'<br>')}</blockquote></div></section>${d.features.length?`<section class="detail-features"><div class="section-heading"><div><div class="eyebrow">A closer look</div><h2>体验要点</h2></div></div><div class="feature-grid">${d.features.map((f,j)=>`<article class="feature"><span class="feature-no">0${j+1}</span><h3>${esc(f[0])}</h3><p>${esc(f[1])}</p></article>`).join('')}</div></section>`:''}${p.video?`<section class="video-section"><div class="section-heading"><div><div class="eyebrow">In motion</div><h2>看看它如何使用</h2></div></div><video data-analytics-video controls playsinline preload="metadata" poster="../../assets/${p.image}" aria-label="吃点啥产品演示视频"><source src="../../assets/${p.video}" type="video/mp4">你的浏览器不支持视频播放，请<a href="../../assets/${p.video}">下载演示视频</a>。</video></section>`:''}<section class="visit-section"><div><span class="eyebrow">Explore the project</span><h2>到作品里看看。</h2></div><a class="button"${tracking('project_outbound','bottom',p)} href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(d.action)} ${arrow}</a></section><nav class="project-pagination" aria-label="作品导航"><a class="text-link" href="../../portfolio.html">← 返回作品集</a><a class="next-project"${tracking('project_open','next_project',next,(i+1)%projects.length+1)} href="../${next.slug}/index.html"><small>下一个作品</small><span>${esc(next.title)} →</span></a></nav>`;
-  fs.mkdirSync(path.join(projectDir,p.slug),{recursive:true});
-  fs.writeFileSync(path.join(projectDir,p.slug,'index.html'),shell(`${p.title} · Tim 的作品集`,p.summary,body,{base:'../../',project:p}));
-});
-fs.writeFileSync(path.join(dist,'.nojekyll'),'');
-console.log(`Built ${projects.length} project detail pages.`);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const result = buildSite();
+  console.log(`Built ${result.pages} pages from ${result.projects} visible projects. ${result.validation}`);
+}

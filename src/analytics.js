@@ -16,14 +16,18 @@
   try {
     if (preferences.get('analytics') === 'off') localStorage.setItem('portfolio.analytics.disabled', '1');
     if (preferences.get('analytics') === 'on') localStorage.removeItem('portfolio.analytics.disabled');
+    disabled = disabled || localStorage.getItem('portfolio.analytics.disabled') === '1';
+  } catch {
+    // Query-string preferences still work when local storage is unavailable.
+  }
+  try {
     if (preferences.has('ga_debug')) {
       if (debug) sessionStorage.setItem('portfolio.analytics.debug', '1');
       else sessionStorage.removeItem('portfolio.analytics.debug');
     }
-    disabled = disabled || localStorage.getItem('portfolio.analytics.disabled') === '1';
     debug = debug || sessionStorage.getItem('portfolio.analytics.debug') === '1';
   } catch {
-    // Storage may be unavailable; query-string preferences still work for this page.
+    // Session storage availability is independent of local storage.
   }
   if (disabled) return;
 
@@ -76,9 +80,12 @@
   window.gtag('config', measurementId, config);
   if (debug) console.info('[Portfolio GA4] page_view', config);
 
+  let tagLoaded = false;
   const tag = document.createElement('script');
   tag.async = true;
   tag.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+  tag.onload = () => { tagLoaded = true; };
+  tag.onerror = () => { tagLoaded = false; };
   document.head.appendChild(tag);
 
   function track(name, parameters, callback) {
@@ -107,16 +114,17 @@
 
     const sameTab = event.type === 'click' && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
       && (!link.target || link.target === '_self') && !link.hasAttribute('download');
-    if (sameTab) {
-      // A short bounded wait gives gtag time to flush without breaking blocked-tag navigation.
+    if (sameTab && tagLoaded) {
+      // Wait only for an available tag; blocked or pending tags must not delay navigation.
       event.preventDefault();
       let navigated = false;
       const navigate = () => {
         if (navigated) return;
         navigated = true;
+        clearTimeout(timer);
         window.location.assign(destination.href);
       };
-      setTimeout(navigate, 200);
+      const timer = setTimeout(navigate, 200);
       track(link.dataset.analyticsEvent, parameters, navigate);
     } else {
       track(link.dataset.analyticsEvent, parameters);
